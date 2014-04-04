@@ -54,6 +54,7 @@ public class jmongosysbenchexecute {
     public static Integer maxThreadTPS;
     public static String serverName;
     public static int serverPort;
+    public static String collectionPerDB;
     
     public static int oltpRangeSize;
     public static int oltpPointSelects;
@@ -72,7 +73,7 @@ public class jmongosysbenchexecute {
     }
 
     public static void main (String[] args) throws Exception {
-        if (args.length != 20) {
+        if (args.length != 21) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
             logMe("jsysbenchexecute [number of collections] [database name] [number of writer threads] [documents per collection] [seconds feedback] "+
                                    "[log file name] [read only Y/N] [runtime (seconds)] [range size] [point selects] "+
@@ -100,6 +101,7 @@ public class jmongosysbenchexecute {
         maxTPS = Integer.valueOf(args[17]);
         serverName = args[18];
         serverPort = Integer.valueOf(args[19]);
+        collectionPerDB = args[20];
 
         maxThreadTPS = (maxTPS / writerThreads) + 1;
         
@@ -147,6 +149,7 @@ public class jmongosysbenchexecute {
         logMe("  maximum tps (global)     = %d",maxTPS);
         logMe("  maximum tps (per thread) = %d",maxThreadTPS);
         logMe("  Server:Port = %s:%d",serverName,serverPort);
+        logMe("  collection per DB = %s",collectionPerDB);
 
         MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(60000).writeConcern(myWC).build();
         ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
@@ -274,6 +277,9 @@ public class jmongosysbenchexecute {
                 }
                 
                 String collectionName = "sbtest" + Integer.toString(rand.nextInt(numCollections)+1);
+                if (collectionPerDB.toLowerCase().equals("y")) {
+                	db = db.getSisterDB(collectionName);
+                }
                 DBCollection coll = db.getCollection(collectionName);
                 
                 try {
@@ -294,8 +300,12 @@ public class jmongosysbenchexecute {
                         BasicDBObject query = new BasicDBObject("_id", startId);
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
                         
-                        DBObject myDoc = coll.findOne(query, columns);
-                        //System.out.println(myDoc);
+                        try {
+	                        DBObject myDoc = coll.findOne(query, columns);
+	                        //System.out.println(myDoc);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                         
                         globalPointQueries.incrementAndGet();
                     }
@@ -319,7 +329,11 @@ public class jmongosysbenchexecute {
                                 cursor.next();
                                 //System.out.println(cursor.next());
                             }
-                        } finally {
+                        } 
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        } 
+                        finally {
                             cursor.close();
                         }
                         
@@ -351,9 +365,13 @@ public class jmongosysbenchexecute {
                         DBObject group = new BasicDBObject("$group", groupFields);
                         
                         // run aggregation
-                        AggregationOutput output = coll.aggregate( match, project, group );
-                        
-                        //System.out.println(output.getCommandResult());
+                        try {
+                        	AggregationOutput output = coll.aggregate( match, project, group );
+                            //System.out.println(output.getCommandResult());
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        } 
     
                         globalRangeQueries.incrementAndGet();
                     }
@@ -377,7 +395,11 @@ public class jmongosysbenchexecute {
                                 cursor.next();
                                 //System.out.println(cursor.next());
                             }
-                        } finally {
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        } 
+                        finally {
                             cursor.close();
                         }
                         
@@ -397,8 +419,13 @@ public class jmongosysbenchexecute {
                        
                         BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
-                        List lstDistinct = coll.distinct("c", query);
-                        //System.out.println(lstDistinct.toString());
+                        try {
+	                        List lstDistinct = coll.distinct("c", query);
+	                        //System.out.println(lstDistinct.toString());
+                        }
+                        catch (Exception e) {
+	                            e.printStackTrace();
+	                    } 
                         
                         globalRangeQueries.incrementAndGet();
                     }
@@ -414,7 +441,13 @@ public class jmongosysbenchexecute {
                             
                             int startId = rand.nextInt(numMaxInserts)+1;
                             
-                            WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$inc", new BasicDBObject("k",1)), false, false);
+                            try {
+                            	WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$inc", new BasicDBObject("k",1)), false, false);
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                            } 
+
     
                             //System.out.println(wrUpdate.toString());
                         }
@@ -435,7 +468,13 @@ public class jmongosysbenchexecute {
     
                             String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
     
-                            WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$set", new BasicDBObject("c",cVal)), false, false);
+                            try {
+                            	WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$set", new BasicDBObject("c",cVal)), false, false);
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                            } 
+
                             
                             //System.out.println(wrUpdate.toString());
                         }
@@ -446,9 +485,16 @@ public class jmongosysbenchexecute {
                       
                         //db.sbtest8.remove({_id: 5523412})
                         
-                        int startId = rand.nextInt(numMaxInserts)+1;
-                        
-                        WriteResult wrRemove = coll.remove(new BasicDBObject("_id", startId));
+                        //int startId = rand.nextInt(numMaxInserts)+1;
+                        int nextRandom = rand.nextInt(numMaxInserts-threadCount)+1;
+                        int startId = threadNumber + (threadCount * (nextRandom / threadCount));
+                        try {
+                        	WriteResult wrRemove = coll.remove(new BasicDBObject("_id", startId));
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        } 
+
     
     
                         //c_val = sb_rand_str([[###########-###########-###########-###########-###########-###########-###########-###########-###########-###########]])
@@ -462,7 +508,13 @@ public class jmongosysbenchexecute {
                         doc.put("c",cVal);
                         String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
                         doc.put("pad",padVal);
-                        WriteResult wrInsert = coll.insert(doc);
+                        try {
+                        	WriteResult wrInsert = coll.insert(doc);
+                        }
+                        catch (Exception e) {
+                            e.printStackTrace();
+                        } 
+
                     }
                 
                     globalSysbenchTransactions.incrementAndGet();
@@ -600,3 +652,4 @@ public class jmongosysbenchexecute {
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 }
+

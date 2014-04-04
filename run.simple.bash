@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# With the patched Java Driver, ca turn on/off write commands
+export WRITE_COMMANDS_ENABLED=false
 # simple script to run against running MongoDB/TokuMX server localhost:(default port)
 
 # if running TokuMX, need to select compression for collection and secondary indexes (zlib is default)
@@ -16,7 +18,7 @@ export NUM_COLLECTIONS=16
 
 # number of documents to maintain per collection
 #   valid values : integer > 0
-export NUM_DOCUMENTS_PER_COLLECTION=10000000
+export NUM_DOCUMENTS_PER_COLLECTION=1000000
 
 # total number of documents to insert per "batch"
 #   valid values : integer > 0
@@ -24,16 +26,17 @@ export NUM_DOCUMENTS_PER_INSERT=1000
 
 # total number of simultaneous insertion threads (for loader)
 #   valid values : integer > 0
-export NUM_LOADER_THREADS=8
+export NUM_LOADER_THREADS=16
 
 # total number of simultaneous benchmark threads
 #   valid values : integer > 0
-export NUM_WRITER_THREADS=64
+export NUM_WRITER_THREADS=$1
 
 # run the benchmark for this many minutes
 #   valid values : intever > 0
 export RUN_TIME_MINUTES=10
-export RUN_TIME_SECONDS=$[RUN_TIME_MINUTES*60]
+#export RUN_TIME_SECONDS=$[RUN_TIME_MINUTES*60]
+export RUN_TIME_SECONDS=600
 
 # database in which to run the benchmark
 #   valid values : character
@@ -98,6 +101,10 @@ export SYSBENCH_INDEX_UPDATES=1
 export SYSBENCH_NON_INDEX_UPDATES=1
 
 
+# Whether a colelction is created in a seperate DB
+#   valud values : Y/N
+export SYSBENCH_COLL_PER_DB=N
+
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchload.java
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchexecute.java
 
@@ -111,7 +118,7 @@ rm -f $LOG_NAME
 rm -f $BENCHMARK_TSV
 
 T="$(date +%s)"
-java -cp $CLASSPATH:$PWD/src jmongosysbenchload $NUM_COLLECTIONS $DB_NAME $NUM_LOADER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_DOCUMENTS_PER_INSERT $NUM_INSERTS_PER_FEEDBACK $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $MONGO_COMPRESSION $MONGO_BASEMENT $WRITE_CONCERN $MONGO_SERVER $MONGO_PORT
+java -Dorg.mongodb.writecommands.enabled=$WRITE_COMMANDS_ENABLED -cp $CLASSPATH:$PWD/src jmongosysbenchload $NUM_COLLECTIONS $DB_NAME $NUM_LOADER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_DOCUMENTS_PER_INSERT $NUM_INSERTS_PER_FEEDBACK $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $MONGO_COMPRESSION $MONGO_BASEMENT $WRITE_CONCERN $MONGO_SERVER $MONGO_PORT $SYSBENCH_COLL_PER_DB
 echo "" | tee -a $LOG_NAME
 T="$(($(date +%s)-T))"
 printf "`date` | sysbench loader duration = %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))" | tee -a $LOG_NAME
@@ -126,7 +133,7 @@ rm -f $LOG_NAME
 rm -f $BENCHMARK_TSV
 
 T="$(date +%s)"
-java -cp $CLASSPATH:$PWD/src jmongosysbenchexecute $NUM_COLLECTIONS $DB_NAME $NUM_WRITER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $SYSBENCH_READ_ONLY $RUN_TIME_SECONDS $SYSBENCH_RANGE_SIZE $SYSBENCH_POINT_SELECTS $SYSBENCH_SIMPLE_RANGES $SYSBENCH_SUM_RANGES $SYSBENCH_ORDER_RANGES $SYSBENCH_DISTINCT_RANGES $SYSBENCH_INDEX_UPDATES $SYSBENCH_NON_INDEX_UPDATES $WRITE_CONCERN $MAX_TPS $MONGO_SERVER $MONGO_PORT | tee -a $LOG_NAME
+#java -Dorg.mongodb.writecommands.enabled=$WRITE_COMMANDS_ENABLED -cp $CLASSPATH:$PWD/src jmongosysbenchexecute $NUM_COLLECTIONS $DB_NAME $NUM_WRITER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $SYSBENCH_READ_ONLY $RUN_TIME_SECONDS $SYSBENCH_RANGE_SIZE $SYSBENCH_POINT_SELECTS $SYSBENCH_SIMPLE_RANGES $SYSBENCH_SUM_RANGES $SYSBENCH_ORDER_RANGES $SYSBENCH_DISTINCT_RANGES $SYSBENCH_INDEX_UPDATES $SYSBENCH_NON_INDEX_UPDATES $WRITE_CONCERN $MAX_TPS $MONGO_SERVER $MONGO_PORT $SYSBENCH_COLL_PER_DB | tee -a $LOG_NAME 
 echo "" | tee -a $LOG_NAME
 T="$(($(date +%s)-T))"
 printf "`date` | sysbench benchmark duration = %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))" | tee -a $LOG_NAME

@@ -46,6 +46,7 @@ public class jmongosysbenchload {
     public static String myWriteConcern;
     public static String serverName;
     public static int serverPort;
+    public static String collectionPerDB;
     
     public static int allDone = 0;
     
@@ -53,9 +54,9 @@ public class jmongosysbenchload {
     }
 
     public static void main (String[] args) throws Exception {
-        if (args.length != 13) {
+        if (args.length != 14) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
-            logMe("jsysbenchload [number of collections] [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)]  [writeconcern] [server] [port]");
+            logMe("jsysbenchload [number of collections] [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)]  [writeconcern] [server] [port] [collection per DB]");
             System.exit(1);
         }
         
@@ -72,6 +73,7 @@ public class jmongosysbenchload {
         myWriteConcern = args[10];
         serverName = args[11];
         serverPort = Integer.valueOf(args[12]);
+        collectionPerDB = args[13];
         
         WriteConcern myWC = new WriteConcern();
         if (myWriteConcern.toLowerCase().equals("fsync_safe")) {
@@ -107,7 +109,8 @@ public class jmongosysbenchload {
         logMe("  logging to file %s",logFileName);
         logMe("  write concern = %s",myWriteConcern);
         logMe("  Server:Port = %s:%d",serverName,serverPort);
-
+        logMe("  Collection per DB = %s",collectionPerDB);
+        
         MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(60000).writeConcern(myWC).build();
         ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
         MongoClient m = new MongoClient(srvrAdd, clientOptions);
@@ -177,7 +180,11 @@ public class jmongosysbenchload {
             for (int i=0; i<writerThreads; i++) {
                 if ((tWriterThreads[i] == null) || (!tWriterThreads[i].isAlive())) {
                     globalWriterThreads.incrementAndGet();
-                    tWriterThreads[i] = new Thread(t.new MyWriter(collectionNumber+1, writerThreads, i, numMaxInserts, db));
+                    DB dbToUse = db;
+                    if (collectionPerDB.toLowerCase().equals("y")) {
+                    	dbToUse = m.getDB(dbName + (collectionNumber+1));
+                    }
+                    tWriterThreads[i] = new Thread(t.new MyWriter(collectionNumber+1, writerThreads, i, numMaxInserts, dbToUse));
                     tWriterThreads[i].start();
                     break;
                 }
@@ -286,21 +293,26 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
             try {
                 logMe("Writer thread %d : started to load collection %s",threadNumber, collectionName);
 
+                // Pre-create the objects
                 BasicDBObject[] aDocs = new BasicDBObject[documentsPerInsert];
-                
+                for (int i=0; i < documentsPerInsert; i++) {
+                	aDocs[i] = new BasicDBObject();
+                }
+
                 int numRounds = numMaxInserts / documentsPerInsert;
                 
+                BasicDBObject doc = null;
+
                 for (int roundNum = 0; roundNum < numRounds; roundNum++) {
                     for (int i = 0; i < documentsPerInsert; i++) {
                         id++;
-                        BasicDBObject doc = new BasicDBObject();
+                        doc = aDocs[i];
                         doc.put("_id",id);
                         doc.put("k",rand.nextInt(numMaxInserts)+1);
                         String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
                         doc.put("c",cVal);
                         String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
                         doc.put("pad",padVal);
-                        aDocs[i]=doc;
                     }
 
                     coll.insert(aDocs);
@@ -448,3 +460,4 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
         System.out.println(Thread.currentThread() + String.format(format, args));
     }
 }
+
