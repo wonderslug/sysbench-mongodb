@@ -256,6 +256,13 @@ public class jmongosysbenchexecute {
             long numLastTransactions = 0;
             long nextMs = System.currentTimeMillis() + 1000;
             
+            String collectionName = "sbtest" + Integer.toString(rand.nextInt(numCollections)+1);
+            if (collectionPerDB.toLowerCase().equals("y")) {
+            	db = db.getSisterDB(collectionName);
+            }
+            
+            DBCollection coll = db.getCollection(collectionName);
+            
             while (allDone == 0) {
                 if ((numTransactions - numLastTransactions) >= maxThreadTPS) {
                     // pause until a second has passed
@@ -276,17 +283,14 @@ public class jmongosysbenchexecute {
                     db.command("beginTransaction");
                 }
                 
-                String collectionName = "sbtest" + Integer.toString(rand.nextInt(numCollections)+1);
-                if (collectionPerDB.toLowerCase().equals("y")) {
-                	db = db.getSisterDB(collectionName);
-                }
-                DBCollection coll = db.getCollection(collectionName);
-                
                 try {
                     if (bIsTokuMX) {
                         // make sure a connection is available, given that we are not pooling
                         db.requestEnsureConnection();
                     }
+                    
+                    BasicDBObject query = new BasicDBObject("_id", 0);
+                    BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
                     
                     for (int i=1; i <= oltpPointSelects; i++) {
                         //for i=1, oltp_point_selects do
@@ -296,9 +300,11 @@ public class jmongosysbenchexecute {
                         // db.sbtest8.find({_id: 554312}, {c: 1, _id: 0})
                         
                         int startId = rand.nextInt(numMaxInserts)+1;
+                        
+                        query.put("_id", startId);
     
-                        BasicDBObject query = new BasicDBObject("_id", startId);
-                        BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        //BasicDBObject query = new BasicDBObject("_id", startId);
+                        //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
                         
                         try {
 	                        DBObject myDoc = coll.findOne(query, columns);
@@ -309,6 +315,9 @@ public class jmongosysbenchexecute {
                         
                         globalPointQueries.incrementAndGet();
                     }
+                    
+                    query = new BasicDBObject("_id", 0);
+                    columns = new BasicDBObject("c", 1).append("_id", 0);
                     
                     for (int i=1; i <= oltpSimpleRanges; i++) {
                         //for i=1, oltp_simple_ranges do
@@ -321,8 +330,10 @@ public class jmongosysbenchexecute {
                         int startId = rand.nextInt(numMaxInserts)+1;
                         int endId = startId + oltpRangeSize - 1;
                        
-                        BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
-                        BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+                        //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        query.put("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+
                         DBCursor cursor = coll.find(query, columns);
                         try {
                             while(cursor.hasNext()) {
@@ -340,6 +351,19 @@ public class jmongosysbenchexecute {
                         globalRangeQueries.incrementAndGet();
                     }
     
+                    // build the $projection operation
+                    DBObject fields = new BasicDBObject("k", 1);
+                    fields.put("_id", 0);
+                    DBObject project = new BasicDBObject("$project", fields );
+
+                    // Now the $group operation
+                    DBObject groupFields = new BasicDBObject( "_id", null);
+                    groupFields.put("average", new BasicDBObject( "$sum", "$k"));
+                    DBObject group = new BasicDBObject("$group", groupFields);
+
+                    // create our pipeline operations, first with the $match
+                    DBObject match = new BasicDBObject("$match", 0);
+
                     for (int i=1; i <= oltpSumRanges; i++) {
                         //for i=1, oltp_sum_ranges do
                         //   range_start = sb_rand(1, oltp_table_size)
@@ -352,17 +376,8 @@ public class jmongosysbenchexecute {
                         int endId = startId + oltpRangeSize - 1;
     
                         // create our pipeline operations, first with the $match
-                        DBObject match = new BasicDBObject("$match", new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId)));
-                        
-                        // build the $projection operation
-                        DBObject fields = new BasicDBObject("k", 1);
-                        fields.put("_id", 0);
-                        DBObject project = new BasicDBObject("$project", fields );
-                        
-                        // Now the $group operation
-                        DBObject groupFields = new BasicDBObject( "_id", null);
-                        groupFields.put("average", new BasicDBObject( "$sum", "$k"));
-                        DBObject group = new BasicDBObject("$group", groupFields);
+                        //DBObject match = new BasicDBObject("$match", new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId)));
+                        match.put("$match", new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId)));                        
                         
                         // run aggregation
                         try {
@@ -375,6 +390,9 @@ public class jmongosysbenchexecute {
     
                         globalRangeQueries.incrementAndGet();
                     }
+                    
+                    query = new BasicDBObject("_id", 0);
+                    columns = new BasicDBObject("c", 1).append("_id", 0);
                    
                     for (int i=1; i <= oltpOrderRanges; i++) {
                         //for i=1, oltp_order_ranges do
@@ -387,8 +405,10 @@ public class jmongosysbenchexecute {
                         int startId = rand.nextInt(numMaxInserts)+1;
                         int endId = startId + oltpRangeSize - 1;
                        
-                        BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
-                        BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+                        //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        query.put("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+                        
                         DBCursor cursor = coll.find(query, columns).sort(new BasicDBObject("c",1));
                         try {
                             while(cursor.hasNext()) {
@@ -405,7 +425,10 @@ public class jmongosysbenchexecute {
                         
                         globalRangeQueries.incrementAndGet();
                     }
-                
+
+                    query = new BasicDBObject("_id", 0);
+                    columns = new BasicDBObject("c", 1).append("_id", 0);
+                    
                     for (int i=1; i <= oltpDistinctRanges; i++) {
                         //for i=1, oltp_distinct_ranges do
                         //   range_start = sb_rand(1, oltp_table_size)
@@ -417,8 +440,10 @@ public class jmongosysbenchexecute {
                         int startId = rand.nextInt(numMaxInserts)+1;
                         int endId = startId + oltpRangeSize - 1;
                        
-                        BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
-                        BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+                        //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
+                        query.put("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
+                        
                         try {
 	                        List lstDistinct = coll.distinct("c", query);
 	                        //System.out.println(lstDistinct.toString());
@@ -485,11 +510,12 @@ public class jmongosysbenchexecute {
                       
                         //db.sbtest8.remove({_id: 5523412})
                         
-                        //int startId = rand.nextInt(numMaxInserts)+1;
-                        int nextRandom = rand.nextInt(numMaxInserts-threadCount)+1;
-                        int startId = threadNumber + (threadCount * (nextRandom / threadCount));
+                        int startId = rand.nextInt(numMaxInserts)+1;
+                        //int nextRandom = rand.nextInt(numMaxInserts-threadCount)+1;
+                        //int startId = threadNumber + (threadCount * (nextRandom / threadCount));
+                        WriteResult wrRemove = null;
                         try {
-                        	WriteResult wrRemove = coll.remove(new BasicDBObject("_id", startId));
+                        	wrRemove = coll.remove(new BasicDBObject("_id", startId));
                         }
                         catch (Exception e) {
                             e.printStackTrace();
@@ -501,20 +527,24 @@ public class jmongosysbenchexecute {
                         //pad_val = sb_rand_str([[###########-###########-###########-###########-###########]])
                         //rs = db_query("INSERT INTO " .. table_name ..  " (id, k, c, pad) VALUES " .. string.format("(%d, %d, '%s', '%s')",i, sb_rand(1, oltp_table_size) , c_val, pad_val))
                 
-                        BasicDBObject doc = new BasicDBObject();
-                        doc.put("_id",startId);
-                        doc.put("k",rand.nextInt(numMaxInserts)+1);
-                        String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
-                        doc.put("c",cVal);
-                        String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
-                        doc.put("pad",padVal);
-                        try {
-                        	WriteResult wrInsert = coll.insert(doc);
+                        if ( wrRemove.getN() == 1 ) {
+	                        BasicDBObject doc = new BasicDBObject();
+	                        doc.put("_id",startId);
+	                        doc.put("k",rand.nextInt(numMaxInserts)+1);
+	                        String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
+	                        doc.put("c",cVal);
+	                        String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
+	                        doc.put("pad",padVal);
+	                        try {
+	                        	WriteResult wrInsert = coll.insert(doc);
+	                        }
+	                        catch (Exception e) {
+	                            e.printStackTrace();
+	                        } 
                         }
-                        catch (Exception e) {
-                            e.printStackTrace();
-                        } 
-
+                        else {
+                        	logMe("_id %d already removed in %s",startId, collectionName);
+                        }
                     }
                 
                     globalSysbenchTransactions.incrementAndGet();
