@@ -606,6 +606,7 @@ public class jmongosysbenchexecute {
             long lastMs = t0;
             long intervalNumber = 0;
             long nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
+            long sleepTime = (1000 * secondsPerFeedback) - 100;
             long runEndMillis = Long.MAX_VALUE;
             if (runSeconds > 0)
                 runEndMillis = t0 + (1000 * runSeconds);
@@ -613,7 +614,10 @@ public class jmongosysbenchexecute {
             while ((System.currentTimeMillis() < runEndMillis) && (thisInserts < numMaxInserts))
             {
                 try {
-                    Thread.sleep(100);
+                    //Thread.sleep(100);
+                	// Sleep until we are due to wake up for next report
+                	Thread.sleep(sleepTime);
+                	sleepTime = 100;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -634,7 +638,7 @@ public class jmongosysbenchexecute {
                 {
                     intervalNumber++;
                     nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
-
+                    sleepTime = (1000 * secondsPerFeedback) -100;
                     long elapsed = now - t0;
                     long thisIntervalMs = now - lastMs;
 

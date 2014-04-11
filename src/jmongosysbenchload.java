@@ -357,11 +357,15 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
             long nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
             long nextFeedbackInserts = lastInserts + insertsPerFeedback;
             long thisInserts = 0;
+            long sleepTime = (1000 * secondsPerFeedback) - 100;
 
             while (allDone == 0)
             {
                 try {
-                    Thread.sleep(100);
+                    //Thread.sleep(100);
+                	// Sleep until we are due to wake up for next report
+                	Thread.sleep(sleepTime);
+                	sleepTime = 100;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -373,6 +377,8 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
                 {
                     intervalNumber++;
                     nextFeedbackMillis = t0 + (1000 * secondsPerFeedback * (intervalNumber + 1));
+                    sleepTime = (1000 * secondsPerFeedback) -100;
+
                     nextFeedbackInserts = (intervalNumber + 1) * insertsPerFeedback;
 
                     long elapsed = now - t0;
