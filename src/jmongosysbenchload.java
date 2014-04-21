@@ -288,7 +288,7 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
             coll.ensureIndex(new BasicDBObject("k", 1), idxOptions);
             
             long numInserts = 0;
-            int id = 0;
+            long id = 0;
 
             try {
                 logMe("Writer thread %d : started to load collection %s",threadNumber, collectionName);

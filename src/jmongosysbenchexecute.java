@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Random;
 
 public class jmongosysbenchexecute {
     public static AtomicLong globalInserts = new AtomicLong(0);
@@ -56,14 +57,14 @@ public class jmongosysbenchexecute {
     public static int serverPort;
     public static String collectionPerDB;
     
-    public static int oltpRangeSize;
-    public static int oltpPointSelects;
-    public static int oltpSimpleRanges;
-    public static int oltpSumRanges;
-    public static int oltpOrderRanges;
-    public static int oltpDistinctRanges;
-    public static int oltpIndexUpdates;
-    public static int oltpNonIndexUpdates;
+    public static long oltpRangeSize;
+    public static long oltpPointSelects;
+    public static long oltpSimpleRanges;
+    public static long oltpSumRanges;
+    public static long oltpOrderRanges;
+    public static long oltpDistinctRanges;
+    public static long oltpIndexUpdates;
+    public static long oltpNonIndexUpdates;
 
     public static boolean bIsTokuMX = false;
     
@@ -228,7 +229,7 @@ public class jmongosysbenchexecute {
         int threadCount; 
         int threadNumber; 
         int numTables;
-        int numMaxInserts;
+        long numMaxInserts;
         int numCollections;
         DB db;
         
@@ -238,7 +239,7 @@ public class jmongosysbenchexecute {
         long numPointQueries = 0;
         long numRangeQueries = 0;
         
-        java.util.Random rand;
+        Random rand;
         
         MyWriter(int threadCount, int threadNumber, int numMaxInserts, DB db, int numCollections) {
             this.threadCount = threadCount;
@@ -248,6 +249,17 @@ public class jmongosysbenchexecute {
             this.numCollections = numCollections;
             rand = new java.util.Random((long) threadNumber);
         }
+        
+        // http://stackoverflow.com/questions/2546078/java-random-long-number-in-0-x-n-range
+        private long nextLong(Random rng, long n) {
+    	   long bits, val;
+    	   do {
+    	      bits = (rng.nextLong() << 1) >>> 1;
+    	      val = bits % n;
+    	   } while (bits-val+(n-1) < 0L);
+    	   return val;
+    	}
+        
         public void run() {
             logMe("Writer thread %d : started",threadNumber);
             globalWriterThreads.incrementAndGet();
@@ -299,7 +311,7 @@ public class jmongosysbenchexecute {
                         
                         // db.sbtest8.find({_id: 554312}, {c: 1, _id: 0})
                         
-                        int startId = rand.nextInt(numMaxInserts)+1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
                         
                         query.put("_id", startId);
     
@@ -327,8 +339,8 @@ public class jmongosysbenchexecute {
                        
                         //db.sbtest8.find({_id: {$gte: 5523412, $lte: 5523512}}, {c: 1, _id: 0})
                        
-                        int startId = rand.nextInt(numMaxInserts)+1;
-                        int endId = startId + oltpRangeSize - 1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
+                        long endId = startId + oltpRangeSize - 1;
                        
                         //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
@@ -372,8 +384,8 @@ public class jmongosysbenchexecute {
                        
                         //db.sbtest8.aggregate([ {$match: {_id: {$gt: 5523412, $lt: 5523512}}}, { $group: { _id: null, total: { $sum: "$k"}} } ])   
     
-                        int startId = rand.nextInt(numMaxInserts)+1;
-                        int endId = startId + oltpRangeSize - 1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
+                        long endId = startId + oltpRangeSize - 1;
     
                         // create our pipeline operations, first with the $match
                         //DBObject match = new BasicDBObject("$match", new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId)));
@@ -402,8 +414,8 @@ public class jmongosysbenchexecute {
                     
                         //db.sbtest8.find({_id: {$gte: 5523412, $lte: 5523512}}, {c: 1, _id: 0}).sort({c: 1})
                         
-                        int startId = rand.nextInt(numMaxInserts)+1;
-                        int endId = startId + oltpRangeSize - 1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
+                        long endId = startId + oltpRangeSize - 1;
                        
                         //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
@@ -437,8 +449,8 @@ public class jmongosysbenchexecute {
                        
                         //db.sbtest8.distinct("c",{_id: {$gt: 5523412, $lt: 5523512}}).sort()
                         
-                        int startId = rand.nextInt(numMaxInserts)+1;
-                        int endId = startId + oltpRangeSize - 1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
+                        long endId = startId + oltpRangeSize - 1;
                        
                         //BasicDBObject query = new BasicDBObject("_id", new BasicDBObject("$gte", startId).append("$lte", endId));
                         //BasicDBObject columns = new BasicDBObject("c", 1).append("_id", 0);
@@ -464,7 +476,7 @@ public class jmongosysbenchexecute {
     
                             //db.sbtest8.update({_id: 5523412}, {$inc: {k: 1}}, false, false)
                             
-                            int startId = rand.nextInt(numMaxInserts)+1;
+                            long startId = nextLong(rand, numMaxInserts)+1;
                             
                             try {
                             	WriteResult wrUpdate = coll.update(new BasicDBObject("_id", startId), new BasicDBObject("$inc", new BasicDBObject("k",1)), false, false);
@@ -489,7 +501,7 @@ public class jmongosysbenchexecute {
     
                             //db.sbtest8.update({_id: 5523412}, {$set: {c: "hello there"}}, false, false)
                             
-                            int startId = rand.nextInt(numMaxInserts)+1;
+                            long startId = nextLong(rand, numMaxInserts)+1;
     
                             String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
     
@@ -510,7 +522,7 @@ public class jmongosysbenchexecute {
                       
                         //db.sbtest8.remove({_id: 5523412})
                         
-                        int startId = rand.nextInt(numMaxInserts)+1;
+                        long startId = nextLong(rand, numMaxInserts)+1;
                         //int nextRandom = rand.nextInt(numMaxInserts-threadCount)+1;
                         //int startId = threadNumber + (threadCount * (nextRandom / threadCount));
                         WriteResult wrRemove = null;
@@ -530,7 +542,7 @@ public class jmongosysbenchexecute {
                         if ( wrRemove.getN() == 1 ) {
 	                        BasicDBObject doc = new BasicDBObject();
 	                        doc.put("_id",startId);
-	                        doc.put("k",rand.nextInt(numMaxInserts)+1);
+	                        doc.put("k",nextLong(rand, numMaxInserts)+1);
 	                        String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
 	                        doc.put("c",cVal);
 	                        String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
