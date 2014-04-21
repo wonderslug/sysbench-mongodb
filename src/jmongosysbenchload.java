@@ -3,27 +3,19 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
-import com.mongodb.DBCursor;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
 import com.mongodb.CommandResult;
 
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Properties;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.File;
 import java.io.Writer;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class jmongosysbenchload {
     public static AtomicLong globalInserts = new AtomicLong(0);
@@ -52,7 +44,17 @@ public class jmongosysbenchload {
     
     public jmongosysbenchload() {
     }
-
+    
+    // http://stackoverflow.com/questions/2546078/java-random-long-number-in-0-x-n-range
+    private long nextLong(Random rng, long n) {
+	   long bits, val;
+	   do {
+	      bits = (rng.nextLong() << 1) >>> 1;
+	      val = bits % n;
+	   } while (bits-val+(n-1) < 0L);
+	   return val;
+	}
+    
     public static void main (String[] args) throws Exception {
         if (args.length != 14) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
@@ -238,7 +240,7 @@ public class jmongosysbenchload {
         int threadCount; 
         int threadNumber; 
         int numTables;
-        int numMaxInserts;
+        long numMaxInserts;
         DB db;
         
         java.util.Random rand;
@@ -299,16 +301,16 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
                 	aDocs[i] = new BasicDBObject();
                 }
 
-                int numRounds = numMaxInserts / documentsPerInsert;
+                long numRounds = numMaxInserts / documentsPerInsert;
                 
                 BasicDBObject doc = null;
 
-                for (int roundNum = 0; roundNum < numRounds; roundNum++) {
+                for (long roundNum = 0; roundNum < numRounds; roundNum++) {
                     for (int i = 0; i < documentsPerInsert; i++) {
                         id++;
                         doc = aDocs[i];
                         doc.put("_id",id);
-                        doc.put("k",rand.nextInt(numMaxInserts)+1);
+                        doc.put("k", nextLong(rand, numMaxInserts)+1);
                         String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
                         doc.put("c",cVal);
                         String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
