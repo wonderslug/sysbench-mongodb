@@ -245,7 +245,7 @@ public class jmongosysbenchload {
         
         java.util.Random rand;
         
-        MyWriter(int collectionNumber, int threadCount, int threadNumber, int numMaxInserts, DB db) {
+        MyWriter(int collectionNumber, int threadCount, int threadNumber, long numMaxInserts, DB db) {
             this.collectionNumber = collectionNumber;
             this.threadCount = threadCount;
             this.threadNumber = threadNumber;
@@ -298,7 +298,12 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
                 // Pre-create the objects
                 BasicDBObject[] aDocs = new BasicDBObject[documentsPerInsert];
                 for (int i=0; i < documentsPerInsert; i++) {
-                	aDocs[i] = new BasicDBObject();
+                	BasicDBObject doc = new BasicDBObject();
+                    String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
+                    doc.put("c",cVal);
+                    String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
+                    doc.put("pad",padVal);                	
+                	aDocs[i] = doc;
                 }
 
                 long numRounds = numMaxInserts / documentsPerInsert;
@@ -311,10 +316,6 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
                         doc = aDocs[i];
                         doc.put("_id",id);
                         doc.put("k", nextLong(rand, numMaxInserts)+1);
-                        String cVal = sysbenchString(rand, "###########-###########-###########-###########-###########-###########-###########-###########-###########-###########");
-                        doc.put("c",cVal);
-                        String padVal = sysbenchString(rand, "###########-###########-###########-###########-###########");
-                        doc.put("pad",padVal);
                     }
 
                     coll.insert(aDocs);
