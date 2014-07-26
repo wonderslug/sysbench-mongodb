@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.Writer;
 import java.io.IOException;
 import java.util.Random;
+//import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class jmongosysbenchload {
@@ -39,6 +40,7 @@ public class jmongosysbenchload {
     public static String serverName;
     public static int serverPort;
     public static String collectionPerDB;
+    public static String cpuProfiler;
     
     public static int allDone = 0;
     
@@ -56,7 +58,7 @@ public class jmongosysbenchload {
 	}
     
     public static void main (String[] args) throws Exception {
-        if (args.length != 14) {
+        if (args.length != 15) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
             logMe("jsysbenchload [number of collections] [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)]  [writeconcern] [server] [port] [collection per DB]");
             System.exit(1);
@@ -76,6 +78,7 @@ public class jmongosysbenchload {
         serverName = args[11];
         serverPort = Integer.valueOf(args[12]);
         collectionPerDB = args[13];
+        cpuProfiler = args[14];
         
         WriteConcern myWC = new WriteConcern();
         if (myWriteConcern.toLowerCase().equals("fsync_safe")) {
@@ -112,6 +115,8 @@ public class jmongosysbenchload {
         logMe("  write concern = %s",myWriteConcern);
         logMe("  Server:Port = %s:%d",serverName,serverPort);
         logMe("  Collection per DB = %s",collectionPerDB);
+        logMe("  CPU Profiler = %s",cpuProfiler);
+
         
         MongoClientOptions clientOptions = new MongoClientOptions.Builder().connectionsPerHost(2048).socketTimeout(240000).writeConcern(myWC).build();
         ServerAddress srvrAdd = new ServerAddress(serverName,serverPort);
@@ -160,7 +165,12 @@ public class jmongosysbenchload {
 
         Thread reporterThread = new Thread(t.new MyReporter());
         reporterThread.start();
-
+        
+        if ( cpuProfiler.toLowerCase().equals("y") ) {
+        	Thread profilerThread = new Thread(t.new MyProfiler(db));
+        	profilerThread.start();
+        }
+        
         Thread[] tWriterThreads = new Thread[writerThreads];
         
         for (int collectionNumber = 0; collectionNumber < numCollections; collectionNumber++) {
@@ -243,7 +253,7 @@ public class jmongosysbenchload {
         long numMaxInserts;
         DB db;
         
-        java.util.Random rand;
+        Random rand;
         
         MyWriter(int collectionNumber, int threadCount, int threadNumber, long numMaxInserts, DB db) {
             this.collectionNumber = collectionNumber;
@@ -252,6 +262,7 @@ public class jmongosysbenchload {
             this.numMaxInserts = numMaxInserts;
             this.db = db;
             rand = new java.util.Random((long) collectionNumber);
+
         }
         public void run() {
             String collectionName = "sbtest" + Integer.toString(collectionNumber);
@@ -348,6 +359,53 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
         return returnString;
     }
 
+    class MyProfiler implements Runnable {
+        DB db;
+        
+    	MyProfiler(DB db) {
+            this.db = db;
+    	}
+    	
+    	public void run() {
+    		
+    		long sleepTime = (1000 * secondsPerFeedback) * 1000;
+    		long interation = 0;
+    		
+    		CommandResult buildInfo = db.getSisterDB("admin").command("buildInfo");
+    		
+    		String complierFlags = buildInfo.getString("compilerFlags");
+    		
+    		if ( complierFlags.contains("use-cpu-profiler") ) {
+    		
+	    		BasicDBObject stopProfile = new BasicDBObject(); 
+	    		stopProfile.put("_cpuProfilerStop", 1);
+	    		
+	    		BasicDBObject filename = new BasicDBObject();
+	    		
+	    		BasicDBObject startProfile = new BasicDBObject(); 
+	    		startProfile.put("_cpuProfilerStart", filename);
+	    		
+	    		String format = logFileName;
+	    		format.replace(".txt.tsv", "%s.prof");
+	    		
+	    		while ( true ) {
+	    			interation++;
+	    			try {
+						Thread.sleep(sleepTime);
+	
+						filename.put("profileFilename", String.format(format, interation));
+						db.getSisterDB("admin").command(startProfile);
+						Thread.sleep(1000 * 30);
+	    			
+						db.getSisterDB("admin").command(stopProfile);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	    		}
+    		}
+		}
+    }
 
     // reporting thread, outputs information to console and file
     class MyReporter implements Runnable {

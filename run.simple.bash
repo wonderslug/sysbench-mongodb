@@ -100,10 +100,13 @@ export SYSBENCH_INDEX_UPDATES=1
 #   valud values : integer > 0
 export SYSBENCH_NON_INDEX_UPDATES=1
 
-
-# Whether a colelction is created in a seperate DB
+# Whether a collection is created in a seperate DB
 #   valud values : Y/N
 export SYSBENCH_COLL_PER_DB=N
+
+# Whether CPU Profiling is collected
+#   valud values : Y/N
+export SYSBENCH_CPU_PROFILER=N
 
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchload.java
 javac -cp $CLASSPATH:$PWD/src src/jmongosysbenchexecute.java
@@ -118,7 +121,7 @@ rm -f $LOG_NAME
 rm -f $BENCHMARK_TSV
 
 T="$(date +%s)"
-java -Dorg.mongodb.writecommands.enabled=$WRITE_COMMANDS_ENABLED -cp $CLASSPATH:$PWD/src jmongosysbenchload $NUM_COLLECTIONS $DB_NAME $NUM_LOADER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_DOCUMENTS_PER_INSERT $NUM_INSERTS_PER_FEEDBACK $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $MONGO_COMPRESSION $MONGO_BASEMENT $WRITE_CONCERN $MONGO_SERVER $MONGO_PORT $SYSBENCH_COLL_PER_DB
+java -Dorg.mongodb.writecommands.enabled=$WRITE_COMMANDS_ENABLED -cp $CLASSPATH:$PWD/src jmongosysbenchload $NUM_COLLECTIONS $DB_NAME $NUM_LOADER_THREADS $NUM_DOCUMENTS_PER_COLLECTION $NUM_DOCUMENTS_PER_INSERT $NUM_INSERTS_PER_FEEDBACK $NUM_SECONDS_PER_FEEDBACK $BENCHMARK_TSV $MONGO_COMPRESSION $MONGO_BASEMENT $WRITE_CONCERN $MONGO_SERVER $MONGO_PORT $SYSBENCH_COLL_PER_DB $SYSBENCH_CPU_PROFILER
 echo "" | tee -a $LOG_NAME
 T="$(($(date +%s)-T))"
 printf "`date` | sysbench loader duration = %02d:%02d:%02d:%02d\n" "$((T/86400))" "$((T/3600%24))" "$((T/60%60))" "$((T%60))" | tee -a $LOG_NAME
