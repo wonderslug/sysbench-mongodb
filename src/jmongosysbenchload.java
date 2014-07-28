@@ -368,7 +368,7 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
     	
     	public void run() {
     		
-    		long sleepTime = (1000 * secondsPerFeedback) * 1000;
+    		long sleepTime = (1000 * 3600); // Wake up hourly
     		long interation = 0;
     		
     		CommandResult buildInfo = db.getSisterDB("admin").command("buildInfo");
