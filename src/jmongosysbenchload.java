@@ -395,7 +395,7 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
 	
 						filename.put("profileFilename", String.format(format, interation));
 						db.getSisterDB("admin").command(startProfile);
-						Thread.sleep(1000 * 30);
+						Thread.sleep(1000 * 30); // Lets the CPU gather for 30 seconds
 	    			
 						db.getSisterDB("admin").command(stopProfile);
 					} catch (InterruptedException e) {

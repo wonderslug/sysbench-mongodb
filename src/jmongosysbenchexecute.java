@@ -65,6 +65,8 @@ public class jmongosysbenchexecute {
     public static long oltpDistinctRanges;
     public static long oltpIndexUpdates;
     public static long oltpNonIndexUpdates;
+    
+    public static String cpuProfiler;
 
     public static boolean bIsTokuMX = false;
     
@@ -74,7 +76,7 @@ public class jmongosysbenchexecute {
     }
 
     public static void main (String[] args) throws Exception {
-        if (args.length != 21) {
+        if (args.length != 22) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
             logMe("jsysbenchexecute [number of collections] [database name] [number of writer threads] [documents per collection] [seconds feedback] "+
                                    "[log file name] [read only Y/N] [runtime (seconds)] [range size] [point selects] "+
@@ -103,6 +105,8 @@ public class jmongosysbenchexecute {
         serverName = args[18];
         serverPort = Integer.valueOf(args[19]);
         collectionPerDB = args[20];
+        cpuProfiler = args[21];
+
 
         maxThreadTPS = (maxTPS / writerThreads) + 1;
         
@@ -205,6 +209,11 @@ public class jmongosysbenchexecute {
         Thread reporterThread = new Thread(t.new MyReporter());
         reporterThread.start();
         reporterThread.join();
+        
+        if ( cpuProfiler.toLowerCase().equals("y") ) {
+        	Thread profilerThread = new Thread(t.new MyProfiler(db));
+        	profilerThread.start();
+        }
 
         // wait for writer threads to terminate
         for (int i=0; i<writerThreads; i++) {
@@ -595,6 +604,54 @@ public class jmongosysbenchexecute {
             }
         }
         return returnString;
+    }
+
+    class MyProfiler implements Runnable {
+        DB db;
+        
+    	MyProfiler(DB db) {
+            this.db = db;
+    	}
+    	
+    	public void run() {
+    		
+    		long sleepTime = (1000 * 3600); // Wake up hourly
+    		long interation = 0;
+    		
+    		CommandResult buildInfo = db.getSisterDB("admin").command("buildInfo");
+    		
+    		String complierFlags = buildInfo.getString("compilerFlags");
+    		
+    		if ( complierFlags.contains("use-cpu-profiler") ) {
+    		
+	    		BasicDBObject stopProfile = new BasicDBObject(); 
+	    		stopProfile.put("_cpuProfilerStop", 1);
+	    		
+	    		BasicDBObject filename = new BasicDBObject();
+	    		
+	    		BasicDBObject startProfile = new BasicDBObject(); 
+	    		startProfile.put("_cpuProfilerStart", filename);
+	    		
+	    		String format = logFileName;
+	    		format.replace(".txt.tsv", "%s.prof");
+	    		
+	    		while ( true ) {
+	    			interation++;
+	    			try {
+						Thread.sleep(sleepTime);
+	
+						filename.put("profileFilename", String.format(format, interation));
+						db.getSisterDB("admin").command(startProfile);
+						Thread.sleep(1000 * 30); // Lets the CPU gather for 30 seconds
+	    			
+						db.getSisterDB("admin").command(stopProfile);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	    		}
+    		}
+		}
     }
 
 
