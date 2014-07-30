@@ -385,15 +385,15 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
 	    		BasicDBObject startProfile = new BasicDBObject(); 
 	    		startProfile.put("_cpuProfilerStart", filename);
 	    		
-	    		String format = logFileName;
-	    		format.replace(".txt.tsv", "%s.prof");
+	    		String profile_file = logFileName;
+	    		profile_file = profile_file.replace(".txt.tsv", "-%d.prof");
 	    		
 	    		while ( true ) {
 	    			interation++;
 	    			try {
 						Thread.sleep(sleepTime);
 	
-						filename.put("profileFilename", String.format(format, interation));
+						filename.put("profileFilename", String.format(profile_file, interation));
 						db.getSisterDB("admin").command(startProfile);
 						Thread.sleep(1000 * 30); // Lets the CPU gather for 30 seconds
 	    			
