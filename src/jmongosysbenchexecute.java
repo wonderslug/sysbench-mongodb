@@ -633,7 +633,7 @@ public class jmongosysbenchexecute {
 	    		startProfile.put("_cpuProfilerStart", filename);
 	    		
 	    		String profile_file = logFileName;
-	    		profile_file = profile_file.replace(".txt.tsv", "-%3d.prof");
+	    		profile_file = profile_file.replace(".txt.tsv", "-%03d.prof");
 	    		
 	    		while ( true ) {
 	    			interation++;

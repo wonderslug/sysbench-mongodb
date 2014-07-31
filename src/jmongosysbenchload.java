@@ -386,7 +386,7 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
 	    		startProfile.put("_cpuProfilerStart", filename);
 	    		
 	    		String profile_file = logFileName;
-	    		profile_file = profile_file.replace(".txt.tsv", "-%3d.prof");
+	    		profile_file = profile_file.replace(".txt.tsv", "-%30d.prof");
 	    		
 	    		while ( true ) {
 	    			interation++;
