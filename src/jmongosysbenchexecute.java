@@ -80,7 +80,7 @@ public class jmongosysbenchexecute {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
             logMe("jsysbenchexecute [number of collections] [database name] [number of writer threads] [documents per collection] [seconds feedback] "+
                                    "[log file name] [read only Y/N] [runtime (seconds)] [range size] [point selects] "+
-                                   "[simple ranges] [sum ranges] [order ranges] [distinct ranges] [index updates] [non index updates] [writeconcern] [max tps] [server] [port]");
+                                   "[simple ranges] [sum ranges] [order ranges] [distinct ranges] [index updates] [non index updates] [writeconcern] [max tps] [server] [port] [cpu profiler]");
             System.exit(1);
         }
         
@@ -633,7 +633,7 @@ public class jmongosysbenchexecute {
 	    		startProfile.put("_cpuProfilerStart", filename);
 	    		
 	    		String profile_file = logFileName;
-	    		profile_file = profile_file.replace(".txt.tsv", "-%d.prof");
+	    		profile_file = profile_file.replace(".txt.tsv", "-%3d.prof");
 	    		
 	    		while ( true ) {
 	    			interation++;

@@ -60,7 +60,7 @@ public class jmongosysbenchload {
     public static void main (String[] args) throws Exception {
         if (args.length != 15) {
             logMe("*** ERROR : CONFIGURATION ISSUE ***");
-            logMe("jsysbenchload [number of collections] [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)]  [writeconcern] [server] [port] [collection per DB]");
+            logMe("jsysbenchload [number of collections] [database name] [number of writer threads] [documents per collection] [documents per insert] [inserts feedback] [seconds feedback] [log file name] [compression type] [basement node size (bytes)]  [writeconcern] [server] [port] [collection per DB] [cpu profiler]");
             System.exit(1);
         }
         
@@ -386,7 +386,7 @@ logMe("Writer thread %d : creating collection %s secondary index",threadNumber, 
 	    		startProfile.put("_cpuProfilerStart", filename);
 	    		
 	    		String profile_file = logFileName;
-	    		profile_file = profile_file.replace(".txt.tsv", "-%d.prof");
+	    		profile_file = profile_file.replace(".txt.tsv", "-%3d.prof");
 	    		
 	    		while ( true ) {
 	    			interation++;
